@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Srijan-XI / Gitea-server — Self-Hosted Git Infrastructure</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Inter & JetBrains Mono Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        gitea: {
+                            50: '#f3f9ec',
+                            100: '#e4f2d5',
+                            200: '#cbe6b0',
+                            300: '#a9d581',
+                            400: '#88c156',
+                            500: '#609926', // Classic Gitea Green
+                            600: '#4e7e1d',
+                            700: '#3d6119',
+                            800: '#334e19',
+                            900: '#2b4319',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-slate-950 text-slate-200 font-sans antialiased selection:bg-gitea-500/30 selection:text-gitea-300">
+
+    <!-- Toast Notification Container (Replaces alert()) -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- Top Navigation Bar -->
+    <header class="sticky top-0 z-40 w-full backdrop-blur-md bg-slate-950/80 border-b border-slate-800/80">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <!-- Brand / Repo Path -->
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-gitea-400 to-gitea-600 flex items-center justify-center shadow-lg shadow-gitea-500/20">
+                    <!-- Teacup / Git Node SVG Icon -->
+                    <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M17 8h1a4 4 0 1 1 0 8h-1"></path>
+                        <path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"></path>
+                        <line x1="6" y1="2" x2="6" y2="4"></line>
+                        <line x1="10" y1="2" x2="10" y2="4"></line>
+                        <line x1="14" y1="2" x2="14" y2="4"></line>
+                    </svg>
+                </div>
+                <div class="flex flex-wrap items-center gap-1.5 text-sm sm:text-base font-medium">
+                    <a href="https://github.com/Srijan-XI" target="_blank" rel="noopener noreferrer" class="text-slate-400 hover:text-white transition-colors">Srijan-XI</a>
+                    <span class="text-slate-600">/</span>
+                    <a href="https://github.com/Srijan-XI/Gitea-server" target="_blank" rel="noopener noreferrer" class="text-white font-semibold hover:text-gitea-400 transition-colors">Gitea-server</a>
+                    <span class="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gitea-500/10 text-gitea-400 border border-gitea-500/20 ml-2">Public</span>
+                </div>
+            </div>
+
+            <!-- Navigation Links & GitHub CTA -->
+            <nav class="flex items-center gap-4 sm:gap-6">
+                <a href="#architecture" class="hidden md:inline-block text-sm text-slate-400 hover:text-white transition-colors">Architecture</a>
+                <a href="#configurator" class="hidden md:inline-block text-sm text-slate-400 hover:text-white transition-colors">Stack Generator</a>
+                <a href="#deployment" class="hidden md:inline-block text-sm text-slate-400 hover:text-white transition-colors">Quickstart</a>
+                <a href="https://github.com/Srijan-XI/Gitea-server" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-sm font-medium border border-slate-700 transition-all shadow-sm">
+                    <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+                    <span>View Repo</span>
+                </a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main>
+        <!-- Hero Section -->
+        <section class="relative overflow-hidden pt-16 pb-20 sm:pt-24 sm:pb-28 border-b border-slate-800/60">
+            <!-- Subtle Background Glow -->
+            <div class="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-gitea-500/10 blur-[120px] rounded-full pointer-events-none"></div>
+
+            <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+                    <!-- Left Column: Pitch & Quick Clone -->
+                    <div class="lg:col-span-7 space-y-6">
+                        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 border border-slate-800 text-xs font-medium text-gitea-400">
+                            <span class="w-2 h-2 rounded-full bg-gitea-500 animate-pulse"></span>
+                            Lightweight Self-Hosted Git Service
+                        </div>
+
+                        <h1 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-[1.1]">
+                            Deploy your private <span class="text-transparent bg-clip-text bg-gradient-to-r from-gitea-400 to-emerald-300">Gitea Server</span> in minutes.
+                        </h1>
+
+                        <p class="text-base sm:text-lg text-slate-400 max-w-2xl leading-relaxed">
+                            Built from <code class="text-slate-200 bg-slate-800/80 px-1.5 py-0.5 rounded font-mono text-sm">Srijan-XI/Gitea-server</code>. A containerized, low-footprint Git hosting environment featuring automated SSH/HTTP routing, persistent volumes, and optional CI/CD runner integration.
+                        </p>
+
+                        <!-- Clone Command Box -->
+                        <div class="pt-2 max-w-xl">
+                            <label class="block text-xs font-medium uppercase tracking-wider text-slate-500 mb-2">Clone Repository</label>
+                            <div class="flex items-center justify-between bg-slate-900/90 border border-slate-800 rounded-2xl p-2 pl-4 shadow-inner">
+                                <code id="clone-cmd" class="font-mono text-xs sm:text-sm text-emerald-300 truncate select-all">git clone https://github.com/Srijan-XI/Gitea-server.git</code>
+                                <button onclick="copyText('git clone https://github.com/Srijan-XI/Gitea-server.git', 'Clone command copied!')" class="ml-3 shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-xs font-medium text-slate-200 transition-all border border-slate-700/70">
+                                    <svg class="w-4 h-4 text-gitea-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                                    Copy
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Key Metrics Badges -->
+                        <div class="grid grid-cols-3 gap-4 pt-4 max-w-lg">
+                            <div class="p-3.5 rounded-2xl bg-slate-900/50 border border-slate-800/80">
+                                <div class="text-xl sm:text-2xl font-bold text-white">~150MB</div>
+                                <div class="text-xs text-slate-400 mt-0.5">Idle RAM Footprint</div>
+                            </div>
+                            <div class="p-3.5 rounded-2xl bg-slate-900/50 border border-slate-800/80">
+                                <div class="text-xl sm:text-2xl font-bold text-gitea-400">Docker</div>
+                                <div class="text-xs text-slate-400 mt-0.5">Compose Ready</div>
+                            </div>
+                            <div class="p-3.5 rounded-2xl bg-slate-900/50 border border-slate-800/80">
+                                <div class="text-xl sm:text-2xl font-bold text-white">100%</div>
+                                <div class="text-xs text-slate-400 mt-0.5">Data Ownership</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Column: Interactive Terminal Preview -->
+                    <div class="lg:col-span-5">
+                        <div class="rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl overflow-hidden">
+                            <!-- Terminal Window Header -->
+                            <div class="px-4 py-3 bg-slate-950/90 border-b border-slate-800 flex items-center justify-between">
+                                <div class="flex items-center gap-2">
+                                    <span class="w-3 h-3 rounded-full bg-rose-500/80"></span>
+                                    <span class="w-3 h-3 rounded-full bg-amber-500/80"></span>
+                                    <span class="w-3 h-3 rounded-full bg-emerald-500/80"></span>
+                                </div>
+                                <span class="text-xs font-mono text-slate-400">bash — Gitea-server</span>
+                                <button onclick="replayTerminal()" class="text-xs text-gitea-400 hover:text-gitea-300 font-medium transition-colors">Replay</button>
+                            </div>
+                            <!-- Terminal Output Body -->
+                            <div id="terminal-body" class="p-5 font-mono text-xs sm:text-sm space-y-2.5 min-h-[290px] bg-slate-900/95 text-slate-300 overflow-x-auto">
+                                <!-- Populated via JS -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Architecture & Features Grid -->
+        <section id="architecture" class="py-20 border-b border-slate-800/60">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="text-center max-w-2xl mx-auto mb-14">
+                    <h2 class="text-3xl font-bold text-white tracking-tight">Infrastructure Blueprint</h2>
+                    <p class="text-slate-400 mt-3 text-sm sm:text-base">
+                        Designed for reliability, clean volume isolation, and effortless updates on any Linux VPS, homelab, or Raspberry Pi node.
+                    </p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- Feature 1 -->
+                    <div class="p-6 rounded-2xl bg-slate-900/60 border border-slate-800 hover:border-gitea-500/40 transition-colors">
+                        <div class="w-11 h-11 rounded-xl bg-gitea-500/10 border border-gitea-500/20 flex items-center justify-center text-gitea-400 mb-4">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"></path></svg>
+                        </div>
+                        <h3 class="text-lg font-semibold text-white mb-2">Isolated Container Stack</h3>
+                        <p class="text-sm text-slate-400 leading-relaxed">
+                            Runs cleanly inside a dedicated bridge network (<code class="text-slate-300 font-mono text-xs">gitea-net</code>) separating the application tier from database storage.
+                        </p>
+                    </div>
+
+                    <!-- Feature 2 -->
+                    <div class="p-6 rounded-2xl bg-slate-900/60 border border-slate-800 hover:border-gitea-500/40 transition-colors">
+                        <div class="w-11 h-11 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400 mb-4">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                        </div>
+                        <h3 class="text-lg font-semibold text-white mb-2">SSH Passthrough & TLS</h3>
+                        <p class="text-sm text-slate-400 leading-relaxed">
+                            Pre-mapped SSH port routing (<code class="text-slate-300 font-mono text-xs">2222:22</code>) avoids conflicts with host SSH daemons while keeping <code class="text-slate-300 font-mono text-xs">git push</code> fast and secure.
+                        </p>
+                    </div>
+
+                    <!-- Feature 3 -->
+                    <div class="p-6 rounded-2xl bg-slate-900/60 border border-slate-800 hover:border-gitea-500/40 transition-colors">
+                        <div class="w-11 h-11 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 mb-4">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"></path></svg>
+                        </div>
+                        <h3 class="text-lg font-semibold text-white mb-2">Flexible Database Backend</h3>
+                        <p class="text-sm text-slate-400 leading-relaxed">
+                            Supports zero-config SQLite3 for single-user setups or production PostgreSQL/MySQL containers for multi-team organizations.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Interactive Docker Compose & Env Configurator -->
+        <section id="configurator" class="py-20 border-b border-slate-800/60 bg-slate-900/20">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="mb-10">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-gitea-400">Interactive Deployment Builder</span>
+                    <h2 class="text-3xl font-bold text-white tracking-tight mt-1">Customize Your Gitea Server Stack</h2>
+                    <p class="text-slate-400 mt-2 text-sm sm:text-base max-w-2xl">
+                        Tailor the <code class="text-slate-300 font-mono text-xs">docker-compose.yml</code> configuration to match your server ports, domain, and database preference, then copy or download it directly.
+                    </p>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                    <!-- Controls Panel -->
+                    <div class="lg:col-span-5 space-y-5 bg-slate-900/80 border border-slate-800 p-6 rounded-2xl h-fit">
+                        <div>
+                            <label for="cfg-domain" class="block text-sm font-medium text-slate-300 mb-1.5">Server Domain / Host IP</label>
+                            <input type="text" id="cfg-domain" value="git.example.com" oninput="updateCompose()" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white font-mono text-sm focus:outline-none focus:border-gitea-500 transition-colors">
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label for="cfg-http" class="block text-sm font-medium text-slate-300 mb-1.5">Web HTTP Port</label>
+                                <input type="number" id="cfg-http" value="3000" oninput="updateCompose()" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white font-mono text-sm focus:outline-none focus:border-gitea-500 transition-colors">
+                            </div>
+                            <div>
+                                <label for="cfg-ssh" class="block text-sm font-medium text-slate-300 mb-1.5">Git SSH Port</label>
+                                <input type="number" id="cfg-ssh" value="2222" oninput="updateCompose()" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white font-mono text-sm focus:outline-none focus:border-gitea-500 transition-colors">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label for="cfg-db" class="block text-sm font-medium text-slate-300 mb-1.5">Database Engine</label>
+                            <select id="cfg-db" onchange="updateCompose()" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white text-sm focus:outline-none focus:border-gitea-500 transition-colors">
+                                <option value="sqlite">SQLite3 (Lightweight / Single Node)</option>
+                                <option value="postgres" selected>PostgreSQL 16 (Recommended Production)</option>
+                            </select>
+                        </div>
+
+                        <div class="pt-2 space-y-3">
+                            <label class="flex items-center justify-between p-3 rounded-xl bg-slate-950/70 border border-slate-800/80 cursor-pointer">
+                                <div>
+                                    <div class="text-sm font-medium text-white">Include Gitea Actions Runner</div>
+                                    <div class="text-xs text-slate-400">Enable built-in CI/CD workflow execution</div>
+                                </div>
+                                <input type="checkbox" id="cfg-runner" onchange="updateCompose()" class="w-5 h-5 rounded accent-gitea-500 cursor-pointer">
+                            </label>
+
+                            <label class="flex items-center justify-between p-3 rounded-xl bg-slate-950/70 border border-slate-800/80 cursor-pointer">
+                                <div>
+                                    <div class="text-sm font-medium text-white">Disable Public Registration</div>
+                                    <div class="text-xs text-slate-400">Restrict account creation to admins only</div>
+                                </div>
+                                <input type="checkbox" id="cfg-private" checked onchange="updateCompose()" class="w-5 h-5 rounded accent-gitea-500 cursor-pointer">
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Live Generated YAML Output -->
+                    <div class="lg:col-span-7 flex flex-col rounded-2xl bg-slate-950 border border-slate-800 overflow-hidden shadow-xl">
+                        <div class="px-4 py-3 bg-slate-900 border-b border-slate-800 flex flex-wrap items-center justify-between gap-2">
+                            <div class="flex items-center gap-2">
+                                <span class="px-2.5 py-1 rounded-lg bg-gitea-500/15 text-gitea-400 font-mono text-xs font-medium">docker-compose.yml</span>
+                                <span class="text-xs text-slate-500">Live Preview</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button onclick="copyCompose()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-medium text-white border border-slate-700 transition-colors">
+                                    Copy YAML
+                                </button>
+                                <button onclick="downloadCompose()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gitea-600 hover:bg-gitea-500 text-xs font-medium text-white transition-colors">
+                                    Download File
+                                </button>
+                            </div>
+                        </div>
+                        <pre class="p-5 font-mono text-xs sm:text-sm text-slate-300 overflow-x-auto leading-relaxed max-h-[480px] overflow-y-auto"><code id="compose-output"></code></pre>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Step-by-Step Deployment Guide -->
+        <section id="deployment" class="py-20">
+            <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="text-center mb-12">
+                    <h2 class="text-3xl font-bold text-white tracking-tight">Deployment Workflow</h2>
+                    <p class="text-slate-400 mt-2 text-sm sm:text-base">Follow these four steps to bring your <code class="text-slate-300 font-mono text-xs">Srijan-XI/Gitea-server</code> instance online.</p>
+                </div>
+
+                <div class="space-y-6">
+                    <!-- Step 1 -->
+                    <div class="p-6 rounded-2xl bg-slate-900/60 border border-slate-800 flex flex-col sm:flex-row gap-5">
+                        <div class="w-10 h-10 shrink-0 rounded-xl bg-gitea-500/15 border border-gitea-500/30 text-gitea-400 font-bold flex items-center justify-center">1</div>
+                        <div class="flex-1 space-y-2">
+                            <h3 class="text-lg font-semibold text-white">Clone the Repository</h3>
+                            <p class="text-sm text-slate-400">Pull the configuration templates and directory structure onto your host machine.</p>
+                            <div class="flex items-center justify-between bg-slate-950 border border-slate-800/90 rounded-xl px-4 py-2.5 font-mono text-xs text-slate-300">
+                                <span>git clone https://github.com/Srijan-XI/Gitea-server.git && cd Gitea-server</span>
+                                <button onclick="copyText('git clone https://github.com/Srijan-XI/Gitea-server.git && cd Gitea-server', 'Step 1 command copied!')" class="text-gitea-400 hover:text-gitea-300 ml-3 shrink-0">Copy</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Step 2 -->
+                    <div class="p-6 rounded-2xl bg-slate-900/60 border border-slate-800 flex flex-col sm:flex-row gap-5">
+                        <div class="w-10 h-10 shrink-0 rounded-xl bg-gitea-500/15 border border-gitea-500/30 text-gitea-400 font-bold flex items-center justify-center">2</div>
+                        <div class="flex-1 space-y-2">
+                            <h3 class="text-lg font-semibold text-white">Configure Environment Variables</h3>
+                            <p class="text-sm text-slate-400">Set strong database credentials and verify UID/GID ownership for persistent volume mounts.</p>
+                            <div class="flex items-center justify-between bg-slate-950 border border-slate-800/90 rounded-xl px-4 py-2.5 font-mono text-xs text-slate-300">
+                                <span>cp .env.example .env && nano .env</span>
+                                <button onclick="copyText('cp .env.example .env && nano .env', 'Step 2 command copied!')" class="text-gitea-400 hover:text-gitea-300 ml-3 shrink-0">Copy</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Step 3 -->
+                    <div class="p-6 rounded-2xl bg-slate-900/60 border border-slate-800 flex flex-col sm:flex-row gap-5">
+                        <div class="w-10 h-10 shrink-0 rounded-xl bg-gitea-500/15 border border-gitea-500/30 text-gitea-400 font-bold flex items-center justify-center">3</div>
+                        <div class="flex-1 space-y-2">
+                            <h3 class="text-lg font-semibold text-white">Launch Services in Detached Mode</h3>
+                            <p class="text-sm text-slate-400">Start Gitea and its backing database in the background with automatic restart policies.</p>
+                            <div class="flex items-center justify-between bg-slate-950 border border-slate-800/90 rounded-xl px-4 py-2.5 font-mono text-xs text-slate-300">
+                                <span>docker compose up -d</span>
+                                <button onclick="copyText('docker compose up -d', 'Step 3 command copied!')" class="text-gitea-400 hover:text-gitea-300 ml-3 shrink-0">Copy</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Step 4 -->
+                    <div class="p-6 rounded-2xl bg-slate-900/60 border border-slate-800 flex flex-col sm:flex-row gap-5">
+                        <div class="w-10 h-10 shrink-0 rounded-xl bg-gitea-500/15 border border-gitea-500/30 text-gitea-400 font-bold flex items-center justify-center">4</div>
+                        <div class="flex-1 space-y-2">
+                            <h3 class="text-lg font-semibold text-white">Complete Initial Web Setup</h3>
+                            <p class="text-sm text-slate-400">
+                                Open <code class="text-emerald-300 font-mono text-xs">http://&lt;your-server-ip&gt;:3000</code> in your browser, verify the pre-filled database settings, and register your primary administrator account.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-slate-800/80 py-10 bg-slate-950">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-slate-500">
+            <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-gitea-500"></span>
+                <span>Project Showcase for <strong class="text-slate-300 font-medium">Srijan-XI/Gitea-server</strong></span>
+            </div>
+            <div class="flex items-center gap-6">
+                <a href="https://github.com/Srijan-XI/Gitea-server" target="_blank" rel="noopener noreferrer" class="hover:text-slate-300 transition-colors">GitHub Repository</a>
+                <a href="https://docs.gitea.com/" target="_blank" rel="noopener noreferrer" class="hover:text-slate-300 transition-colors">Official Gitea Docs</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Interactive Logic -->
+    <script>
+        /**
+         * Custom Toast Notification System (avoids alert())
+         */
+        function showToast(message) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = 'pointer-events-auto flex items-center gap-2.5 px-4 py-3 rounded-xl bg-slate-800 border border-gitea-500/40 text-white text-sm shadow-xl transition-all duration-300 translate-y-2 opacity-0';
+            toast.innerHTML = `
+                <svg class="w-4 h-4 text-gitea-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
+                </svg>
+                <span>${message}</span>
+            `;
+            container.appendChild(toast);
+
+            // Trigger entrance animation
+            requestAnimationFrame(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            });
+
+            // Remove after 2.8 seconds
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 2800);
+        }
+
+        /**
+         * Reliable Clipboard Copy Helper using execCommand fallback for iframe compatibility
+         */
+        function copyText(text, successMessage = 'Copied to clipboard!') {
+            try {
+                const textarea = document.createElement('textarea');
+                textarea.value = text;
+                textarea.style.position = 'fixed';
+                textarea.style.opacity = '0';
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                showToast(successMessage);
+            } catch (err) {
+                console.error('Copy failed:', err);
+                showToast('Unable to copy text.');
+            }
+        }
+
+        /**
+         * Generates dynamic docker-compose.yml based on user inputs
+         */
+        function generateComposeString() {
+            const domain = document.getElementById('cfg-domain').value.trim() || 'git.example.com';
+            const httpPort = document.getElementById('cfg-http').value || '3000';
+            const sshPort = document.getElementById('cfg-ssh').value || '2222';
+            const dbType = document.getElementById('cfg-db').value;
+            const includeRunner = document.getElementById('cfg-runner').checked;
+            const disableReg = document.getElementById('cfg-private').checked;
+
+            let yaml = `version: "3.8"\n\nnetworks:\n  gitea-net:\n    external: false\n\nservices:\n  server:\n    image: gitea/gitea:latest\n    container_name: gitea\n    environment:\n      - USER_UID=1000\n      - USER_GID=1000\n      - GITEA__server__DOMAIN=${domain}\n      - GITEA__server__SSH_DOMAIN=${domain}\n      - GITEA__server__ROOT_URL=http://${domain}:${httpPort}/\n      - GITEA__server__SSH_PORT=${sshPort}\n      - GITEA__service__DISABLE_REGISTRATION=${disableReg}\n`;
+
+            if (dbType === 'postgres') {
+                yaml += `      - GITEA__database__DB_TYPE=postgres\n      - GITEA__database__HOST=db:5432\n      - GITEA__database__NAME=gitea\n      - GITEA__database__USER=gitea\n      - GITEA__database__PASSWD=gitea_secure_pass\n`;
+            } else {
+                yaml += `      - GITEA__database__DB_TYPE=sqlite3\n`;
+            }
+
+            yaml += `    restart: always\n    networks:\n      - gitea-net\n    volumes:\n      - ./gitea-data:/data\n      - /etc/timezone:/etc/timezone:ro\n      - /etc/localtime:/etc/localtime:ro\n    ports:\n      - "${httpPort}:3000"\n      - "${sshPort}:22"\n`;
+
+            if (dbType === 'postgres') {
+                yaml += `    depends_on:\n      - db\n\n  db:\n    image: postgres:16-alpine\n    container_name: gitea-db\n    restart: always\n    environment:\n      - POSTGRES_USER=gitea\n      - POSTGRES_PASSWORD=gitea_secure_pass\n      - POSTGRES_DB=gitea\n    networks:\n      - gitea-net\n    volumes:\n      - ./postgres-data:/var/lib/postgresql/data\n`;
+            }
+
+            if (includeRunner) {
+                yaml += `\n  runner:\n    image: gitea/act_runner:latest\n    container_name: gitea-runner\n    restart: always\n    depends_on:\n      - server\n    environment:\n      - GITEA_INSTANCE_URL=http://server:3000\n      - GITEA_RUNNER_REGISTRATION_TOKEN=\${RUNNER_TOKEN}\n    networks:\n      - gitea-net\n    volumes:\n      - ./runner-data:/data\n      - /var/run/docker.sock:/var/run/docker.sock\n`;
+            }
+
+            return yaml;
+        }
+
+        function updateCompose() {
+            const output = document.getElementById('compose-output');
+            output.textContent = generateComposeString();
+        }
+
+        function copyCompose() {
+            copyText(generateComposeString(), 'docker-compose.yml copied!');
+        }
+
+        function downloadCompose() {
+            const content = generateComposeString();
+            const blob = new Blob([content], { type: 'text/yaml' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'docker-compose.yml';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showToast('Downloaded docker-compose.yml');
+        }
+
+        /**
+         * Animated Hero Terminal Simulation
+         */
+        const terminalLines = [
+            { text: '$ git clone https://github.com/Srijan-XI/Gitea-server.git', color: 'text-emerald-400', delay: 200 },
+            { text: "Cloning into 'Gitea-server'...", color: 'text-slate-400', delay: 650 },
+            { text: '$ cd Gitea-server && docker compose up -d', color: 'text-emerald-400', delay: 1200 },
+            { text: '[+] Running 3/3', color: 'text-slate-300', delay: 1750 },
+            { text: ' ✔ Network gitea-server_gitea-net  Created', color: 'text-sky-400', delay: 2100 },
+            { text: ' ✔ Container gitea-db              Started', color: 'text-sky-400', delay: 2450 },
+            { text: ' ✔ Container gitea                 Started', color: 'text-gitea-400', delay: 2800 },
+            { text: '$ docker ps --format "table {{.Names}}\\t{{.Status}}\\t{{.Ports}}"', color: 'text-emerald-400', delay: 3400 },
+            { text: 'gitea   Up 4 seconds   0.0.0.0:3000->3000/tcp, 0.0.0.0:2222->22/tcp', color: 'text-amber-300', delay: 3900 }
+        ];
+
+        let terminalTimers = [];
+
+        function replayTerminal() {
+            terminalTimers.forEach(clearTimeout);
+            terminalTimers = [];
+            const body = document.getElementById('terminal-body');
+            body.innerHTML = '';
+
+            terminalLines.forEach(line => {
+                const timer = setTimeout(() => {
+                    const div = document.createElement('div');
+                    div.className = `${line.color} whitespace-pre-wrap break-all`;
+                    div.textContent = line.text;
+                    body.appendChild(div);
+                }, line.delay);
+                terminalTimers.push(timer);
+            });
+        }
+
+        // Initialize on load
+        window.addEventListener('DOMContentLoaded', () => {
+            updateCompose();
+            replayTerminal();
+        });
+    </script>
+</body>
+</html>
